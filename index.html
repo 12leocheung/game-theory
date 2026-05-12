@@ -434,12 +434,12 @@ function initPeer(){
     setStatus('peer','✓ OPPONENT CONNECTED!','ok');
     setTimeout(()=>{const seed=Date.now();send({t:'start',seed});startGame(seed);},800);
   });
-  S.peer.on('error',e=>{
-    setStatus('peer','ERROR — REFRESH PAGE','error');
-    peerReady=false;
-    setTimeout(initPeer,3000);
+  S.peer.on('error', e => {
+    setStatus('peer', 'ERROR — RETRYING...', 'error');
+    S.peer.destroy();   // ← destroy the broken peer first
+    peerReady = false;  // ← this was already there but peer wasn't destroyed
+    setTimeout(initPeer, 3000);
   });
-}
 
 function joinRoom(){
   const code=document.getElementById('joinInput').value.trim().toUpperCase();
