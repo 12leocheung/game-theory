@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIND GAMES — Game Theory Arena</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+:root{--bg:#0a0a0f;--panel:#12121a;--border:#2a2a3a;--accent:#ff3c6e;--accent2:#00e5ff;--accent3:#ffe600;--green:#00ff88;--text:#e8e8f0;--muted:#666680;--p1:#ff3c6e;--p2:#00e5ff}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,229,255,.015) 2px,rgba(0,229,255,.015) 4px);pointer-events:none;z-index:0}
+.screen{display:none;position:relative;z-index:1}
+.screen.active{display:flex;flex-direction:column;min-height:100vh}
+/* TITLE */
+#screen-title{align-items:center;justify-content:center;text-align:center;padding:40px 20px;gap:24px}
+.title-logo{font-family:'Bebas Neue',sans-serif;font-size:clamp(60px,14vw,140px);letter-spacing:8px;line-height:.9;background:linear-gradient(135deg,var(--accent) 0%,var(--accent3) 50%,var(--accent2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 40px rgba(255,60,110,.4));animation:titlePulse 3s ease-in-out infinite}
+@keyframes titlePulse{0%,100%{filter:drop-shadow(0 0 40px rgba(255,60,110,.4))}50%{filter:drop-shadow(0 0 60px rgba(0,229,255,.6))}}
+.subtitle{font-family:'Bebas Neue',sans-serif;font-size:clamp(14px,3vw,22px);letter-spacing:6px;color:var(--muted)}
+.tagline{font-size:10px;color:var(--accent3);letter-spacing:3px;text-transform:uppercase;opacity:.8}
+.menu-buttons{display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px}
+/* BUTTONS */
+.btn{background:transparent;border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:3px;text-transform:uppercase;padding:14px 24px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
+.btn::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);transform:scaleY(0);transition:transform .15s}
+.btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(255,60,110,.05)}
+.btn:hover::before{transform:scaleY(1)}
+.btn.primary{border-color:var(--accent);color:var(--accent)}
+.btn.cyan{border-color:var(--accent2);color:var(--accent2)}.btn.cyan::before{background:var(--accent2)}.btn.cyan:hover{background:rgba(0,229,255,.05);border-color:var(--accent2);color:var(--accent2)}
+.btn.yellow{border-color:var(--accent3);color:var(--accent3)}.btn.yellow::before{background:var(--accent3)}.btn.yellow:hover{background:rgba(255,230,0,.05);border-color:var(--accent3);color:var(--accent3)}
+.btn.green{border-color:var(--green);color:var(--green)}.btn.green::before{background:var(--green)}.btn.green:hover{background:rgba(0,255,136,.05);border-color:var(--green);color:var(--green)}
+.btn:disabled{opacity:.3;cursor:not-allowed}.btn:disabled:hover{border-color:var(--border);color:var(--text);background:transparent}.btn:disabled::before{display:none}
+/* LOBBY */
+#screen-lobby{padding:40px 20px;align-items:center;gap:20px}
+.lobby-title{font-family:'Bebas Neue',sans-serif;font-size:40px;letter-spacing:5px;color:var(--accent2)}
+.connection-box{width:100%;max-width:500px;border:1px solid var(--border);padding:24px;background:var(--panel)}
+.connection-box h3{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:var(--muted);margin-bottom:14px}
+.room-id-display{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:8px;color:var(--accent3);text-align:center;padding:16px;border:1px dashed var(--border);margin:12px 0;cursor:pointer;transition:all .15s}
+.room-id-display:hover{border-color:var(--accent3);background:rgba(255,230,0,.05)}
+input[type=text]{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:14px;padding:12px 16px;letter-spacing:3px;outline:none;transition:border-color .15s;text-transform:uppercase}
+input[type=text]:focus{border-color:var(--accent2)}
+.status-line{font-size:10px;color:var(--muted);letter-spacing:2px;text-align:center}
+.status-line.ok{color:var(--green)}
+.status-line.error{color:var(--accent)}
+.status-line.waiting{color:var(--accent3);animation:blink 1s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+/* SCOREBOARD */
+.scoreboard{width:100%;max-width:600px;display:flex;gap:8px;position:sticky;top:0;z-index:100;background:var(--bg);padding:10px 0}
+.score-panel{flex:1;padding:10px 14px;border:1px solid;display:flex;flex-direction:column;align-items:center;gap:1px}
+.score-panel.p1{border-color:var(--p1);background:rgba(255,60,110,.05)}
+.score-panel.p2{border-color:var(--p2);background:rgba(0,229,255,.05)}
+.score-name{font-size:9px;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+.score-val{font-family:'Bebas Neue',sans-serif;font-size:38px;line-height:1}
+.score-panel.p1 .score-val{color:var(--p1)}
+.score-panel.p2 .score-val{color:var(--p2)}
+.score-center{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 10px}
+.round-label{font-family:'Bebas Neue',sans-serif;font-size:10px;letter-spacing:3px;color:var(--muted)}
+.round-num{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--text)}
+/* GAME SCREEN */
+#screen-game{align-items:center;padding:10px 14px;gap:10px}
+.game-container{width:100%;max-width:600px;border:1px solid var(--border);background:var(--panel);overflow:hidden}
+.game-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.02)}
+.game-name{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:4px;color:var(--accent3)}
+.game-timer{font-family:'Bebas Neue',sans-serif;font-size:30px;color:var(--accent);min-width:44px;text-align:right}
+.game-timer.urgent{animation:blink .5s ease-in-out infinite}
+.game-body{padding:20px 18px}
+.game-desc{font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:16px;line-height:1.8;border-left:2px solid var(--accent3);padding-left:10px}
+/* CHOICES */
+.choices{display:grid;gap:8px;margin:14px 0}
+.choices.grid2{grid-template-columns:1fr 1fr}
+.choices.grid3{grid-template-columns:1fr 1fr 1fr}
+.choice-btn{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:14px 6px;cursor:pointer;transition:all .15s;text-align:center}
+.choice-btn .ce{font-size:22px;display:block;margin-bottom:5px}
+.choice-btn .cl{display:block}
+.choice-btn .cs{font-size:9px;color:var(--muted);display:block;margin-top:3px}
+.choice-btn:hover:not(:disabled){border-color:var(--accent2);color:var(--accent2);background:rgba(0,229,255,.05)}
+.choice-btn.selected{border-color:var(--green);color:var(--green);background:rgba(0,255,136,.08)}
+.choice-btn:disabled{cursor:not-allowed;opacity:.6}
+/* WAIT */
+.waiting-msg{text-align:center;font-size:10px;letter-spacing:3px;color:var(--accent3);margin:10px 0;animation:blink 1s infinite}
+/* RESULT OVERLAY */
+.result-overlay{position:fixed;inset:0;background:rgba(10,10,15,.93);flex-direction:column;align-items:center;justify-content:center;z-index:200;gap:18px;display:none}
+.result-overlay.show{display:flex}
+.result-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(44px,10vw,88px);letter-spacing:6px;text-align:center}
+.result-title.win{color:var(--green);filter:drop-shadow(0 0 28px rgba(0,255,136,.5))}
+.result-title.lose{color:var(--accent);filter:drop-shadow(0 0 28px rgba(255,60,110,.5))}
+.result-title.draw{color:var(--accent3);filter:drop-shadow(0 0 28px rgba(255,230,0,.5))}
+.result-explain{max-width:420px;text-align:center;font-size:11px;line-height:1.8;color:var(--muted);padding:0 20px}
+.result-outcome{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:var(--text);text-align:center}
+/* GAME OVER */
+#screen-gameover{align-items:center;justify-content:center;padding:40px 20px;gap:20px;text-align:center}
+.final-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,10vw,80px);letter-spacing:6px}
+.final-scores{display:flex;gap:16px;align-items:center}
+.final-score{font-family:'Bebas Neue',sans-serif;font-size:60px;line-height:1}
+.final-vs{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--muted)}
+/* CONCEPT TAG */
+.concept-tag{display:inline-block;border:1px solid var(--accent3);color:var(--accent3);font-size:8px;letter-spacing:2px;padding:2px 7px;margin-bottom:10px}
+/* SLIDER */
+.slider-wrap{margin:14px 0}
+.slider-wrap label{font-size:10px;letter-spacing:2px;color:var(--muted);display:block;margin-bottom:6px}
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--border);outline:none;border-radius:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:var(--accent2);cursor:pointer;border:none}
+.slider-val{font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--accent2);text-align:center;margin-top:6px}
+/* NUMBER */
+input[type=number]{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:48px;padding:10px 14px;outline:none;text-align:center;transition:border-color .15s;-moz-appearance:textfield}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+input[type=number]:focus{border-color:var(--accent2)}
+/* MATRIX */
+.matrix-table{width:100%;border-collapse:collapse;margin:12px 0;font-size:10px}
+.matrix-table th,.matrix-table td{border:1px solid var(--border);padding:8px 6px;text-align:center;letter-spacing:1px}
+.matrix-table th{color:var(--muted);font-size:8px;letter-spacing:2px}
+.matrix-table td.h{background:rgba(0,229,255,.1);color:var(--accent2)}
+/* AUCTION */
+.auction-display{text-align:center;padding:16px;border:1px solid var(--border);margin:10px 0}
+.auction-item{font-size:40px;margin-bottom:4px}
+.auction-value{font-size:10px;color:var(--accent3);letter-spacing:3px}
+/* ROLE BADGE */
+.role-badge{font-size:9px;letter-spacing:3px;padding:3px 9px;border:1px solid;text-transform:uppercase;display:inline-block;margin-bottom:10px}
+.role-badge.p1{border-color:var(--p1);color:var(--p1)}
+.role-badge.p2{border-color:var(--p2);color:var(--p2)}
+/* ROUND TRANSITION */
+.round-transition{position:fixed;inset:0;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;z-index:300;gap:10px;display:none}
+.round-transition.show{display:flex}
+.rt-label{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:6px;color:var(--muted)}
+.rt-num{font-family:'Bebas Neue',sans-serif;font-size:clamp(80px,18vw,150px);color:var(--text);line-height:1}
+.rt-game-name{font-family:'Bebas Neue',sans-serif;font-size:clamp(22px,6vw,44px);color:var(--accent3);letter-spacing:4px;text-align:center;padding:0 20px}
+/* SEP */
+.sep{height:1px;background:var(--border);width:100%;max-width:500px}
+/* GAME PREVIEW */
+.game-preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;max-height:280px;overflow-y:auto;padding:4px}
+.gpi{border:1px solid var(--border);padding:10px 8px;text-align:center;background:var(--panel)}
+.gpi .gp-icon{font-size:22px;margin-bottom:5px}
+.gpi .gp-name{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--text)}
+.gpi .gp-concept{font-size:8px;letter-spacing:1px;color:var(--accent3);margin-top:2px}
+/* COPY FLASH */
+.copy-flash{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--green);color:var(--bg);font-size:10px;letter-spacing:3px;padding:7px 18px;z-index:999;pointer-events:none;opacity:0;transition:opacity .3s}
+.copy-flash.show{opacity:1}
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border)}
+/* SECRET BOX */
+.secret-box{border:1px solid;padding:14px;margin-bottom:14px;background:rgba(0,0,0,.3)}
+.secret-box.strong{border-color:var(--green)}
+.secret-box.weak{border-color:var(--accent)}
+.secret-type{font-family:'Bebas Neue',sans-serif;font-size:32px}
+.secret-type.strong{color:var(--green)}
+.secret-type.weak{color:var(--accent)}
+/* INFO ROW */
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:11px}
+.info-row .label{color:var(--muted);letter-spacing:2px;font-size:9px}
+.info-row .val{font-family:'Bebas Neue',sans-serif;font-size:22px}
+</style>
+</head>
+<body>
+<div class="copy-flash" id="copyFlash">COPIED!</div>
+
+<!-- TITLE -->
+<div id="screen-title" class="screen active">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;gap:22px;min-height:100vh">
+    <div class="title-logo">MIND<br>GAMES</div>
+    <div class="subtitle">GAME THEORY ARENA</div>
+    <div class="tagline">◈ 12 MINIGAMES · ONLINE MULTIPLAYER · OUTSMART YOUR OPPONENT ◈</div>
+    <div class="sep"></div>
+    <div class="menu-buttons">
+      <button class="btn primary" onclick="showScreen('lobby')">⚡ PLAY ONLINE</button>
+      <button class="btn" onclick="toggleGamesList()">📋 VIEW ALL 12 MINIGAMES</button>
+    </div>
+    <div id="gamesListPanel" style="display:none;width:100%;max-width:500px">
+      <div class="sep"></div>
+      <div style="font-family:'Bebas Neue',sans-serif;letter-spacing:4px;color:var(--muted);font-size:13px;margin-bottom:10px">ALL 12 MINIGAMES</div>
+      <div class="game-preview-grid" id="gamePreviewGrid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- LOBBY -->
+<div id="screen-lobby" class="screen">
+  <div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:18px;min-height:100vh">
+    <div class="lobby-title">LOBBY</div>
+    <div class="connection-box">
+      <h3>YOUR ROOM CODE</h3>
+      <div class="room-id-display" id="roomIdDisplay" onclick="copyRoomId()">LOADING...</div>
+      <div class="status-line" id="peerStatus">CONNECTING TO SERVER...</div>
+    </div>
+    <div class="connection-box">
+      <h3>JOIN A ROOM</h3>
+      <input type="text" id="joinInput" placeholder="ENTER ROOM CODE" maxlength="8"/>
+      <div style="margin-top:10px"><button class="btn cyan" id="joinBtn" onclick="joinRoom()" disabled>→ JOIN ROOM</button></div>
+      <div class="status-line" id="joinStatus" style="margin-top:8px"></div>
+    </div>
+    <button class="btn" onclick="showScreen('title')" style="max-width:500px;width:100%">← BACK</button>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="screen-game" class="screen">
+  <div class="scoreboard">
+    <div class="score-panel p1"><div class="score-name" id="p1label">YOU</div><div class="score-val" id="p1score">0</div></div>
+    <div class="score-center"><div class="round-label">ROUND</div><div class="round-num" id="roundNum">1/12</div></div>
+    <div class="score-panel p2"><div class="score-name" id="p2label">OPP</div><div class="score-val" id="p2score">0</div></div>
+  </div>
+  <div class="game-container">
+    <div class="game-header">
+      <div><div class="game-name" id="gameTitle">...</div><div class="concept-tag" id="conceptTag">GAME THEORY</div></div>
+      <div class="game-timer" id="gameTimer">--</div>
+    </div>
+    <div class="game-body" id="gameBody"></div>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div id="screen-gameover" class="screen">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:18px;min-height:100vh;text-align:center">
+    <div class="final-title" id="finalTitle">MATCH OVER</div>
+    <div class="final-scores">
+      <div><div class="score-name">YOU</div><div class="final-score" style="color:var(--p1)" id="finalP1">0</div></div>
+      <div class="final-vs">VS</div>
+      <div><div class="score-name">OPP</div><div class="final-score" style="color:var(--p2)" id="finalP2">0</div></div>
+    </div>
+    <div class="sep" style="width:100%;max-width:400px"></div>
+    <div id="finalMsg" style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:4px"></div>
+    <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:340px;margin-top:8px">
+      <button class="btn green" onclick="rematch()">↺ REMATCH</button>
+      <button class="btn" onclick="showScreen('title')">⌂ MAIN MENU</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESULT OVERLAY -->
+<div class="result-overlay" id="resultOverlay">
+  <div class="result-title" id="resultTitle">WIN</div>
+  <div class="result-outcome" id="resultOutcome"></div>
+  <div id="resultExtra" style="text-align:center;font-size:12px;color:var(--accent2)"></div>
+  <div class="result-explain" id="resultExplain"></div>
+  <div id="resultPts" style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:var(--accent3)"></div>
+</div>
+
+<!-- ROUND TRANSITION -->
+<div class="round-transition" id="roundTransition">
+  <div class="rt-label">ROUND</div>
+  <div class="rt-num" id="rtNum">1</div>
+  <div class="rt-game-name" id="rtName">LOADING</div>
+  <div style="font-size:9px;letter-spacing:3px;color:var(--muted);margin-top:8px">GET READY...</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// MINIGAME DEFINITIONS
+// ═══════════════════════════════════════════════════════
+const GAMES = [
+  {
+    id:'prisoners_dilemma', name:"PRISONER'S DILEMMA", concept:'Dominant Strategy', icon:'🔒', timer:15,
+    type:'sim_choice',
+    desc:'You are suspects. COOPERATE (stay silent) or DEFECT (betray). Both cooperate: 3pts each. You defect/they coop: 5pts/0pts. Both defect: 1pt each.',
+    choices:[{l:'COOPERATE',e:'🤝',s:'3/3 if mutual',v:'C'},{l:'DEFECT',e:'🗡️',s:'5pts if they stay silent',v:'D'}],
+    matrix:[['3/3','0/5'],['5/0','1/1']],
+    resolve:(a,b)=>{
+      if(a=='C'&&b=='C')return{me:3,them:3,o:'BOTH COOPERATED'};
+      if(a=='D'&&b=='C')return{me:5,them:0,o:'YOU DEFECTED'};
+      if(a=='C'&&b=='D')return{me:0,them:5,o:'THEY DEFECTED'};
+      return{me:1,them:1,o:'MUTUAL DEFECTION'};
+    },
+    explain:'The Nash Equilibrium is mutual defection — but mutual cooperation is Pareto-superior. Without trust or repetition, rational actors get trapped in suboptimal outcomes.'
+  },
+  {
+    id:'stag_hunt', name:'STAG HUNT', concept:'Coordination Game', icon:'🦌', timer:15,
+    type:'sim_choice',
+    desc:'Hunt a STAG together (5pts each) or a HARE alone (2pts). Hunting stag alone gets 0pts — you need your partner!',
+    choices:[{l:'HUNT STAG',e:'🦌',s:'Need both — 5pts each',v:'S'},{l:'HUNT HARE',e:'🐇',s:'Safe solo — 2pts',v:'H'}],
+    resolve:(a,b)=>{
+      if(a=='S'&&b=='S')return{me:5,them:5,o:'STAG HUNT SUCCESS!'};
+      if(a=='S'&&b=='H')return{me:0,them:2,o:'YOU HUNTED ALONE'};
+      if(a=='H'&&b=='S')return{me:2,them:0,o:'THEY HUNTED ALONE'};
+      return{me:2,them:2,o:'BOTH HUNTED HARE'};
+    },
+    explain:'Two Nash Equilibria: Stag/Stag (optimal) and Hare/Hare (safe). Fear of your partner defecting can trap you in the inferior equilibrium — even when cooperation is clearly better.'
+  },
+  {
+    id:'chicken', name:'CHICKEN', concept:'Anti-Coordination', icon:'🚗', timer:12,
+    type:'sim_choice',
+    desc:'Two cars race toward each other. SWERVE (cowardly but safe) or GO STRAIGHT (bold but risky). Both straight: 0pts. One swerves: 4pts for the bold one.',
+    choices:[{l:'SWERVE',e:'↩️',s:'Safe but cowardly — 1pt',v:'S'},{l:'STRAIGHT',e:'💨',s:'Bold — 4pts if they swerve',v:'G'}],
+    resolve:(a,b)=>{
+      if(a=='S'&&b=='S')return{me:1,them:1,o:'BOTH SWERVED'};
+      if(a=='G'&&b=='S')return{me:4,them:1,o:'YOU WIN THE DARE!'};
+      if(a=='S'&&b=='G')return{me:1,them:4,o:'THEY WIN THE DARE'};
+      return{me:0,them:0,o:'💥 CRASH — ZERO POINTS'};
+    },
+    explain:"Chicken has two asymmetric Nash Equilibria. Pre-commitment (visibly removing your steering wheel) is a classic strategy — but only credible if your opponent can verify it."
+  },
+  {
+    id:'beauty_contest', name:'BEAUTY CONTEST', concept:'Iterated Reasoning', icon:'🔢', timer:20,
+    type:'number',
+    desc:'Each player picks 0–100. Winner is closest to ⅔ of the AVERAGE of both picks. Think: what will your opponent choose?',
+    min:0, max:100, defVal:33,
+    resolve:(a,b)=>{
+      const avg=(a+b)/2, target=avg*(2/3);
+      const da=Math.abs(a-target), db=Math.abs(b-target);
+      if(da<db)return{me:4,them:0,o:`TARGET: ${target.toFixed(1)} — YOU CLOSER (${a} vs ${b})`};
+      if(db<da)return{me:0,them:4,o:`TARGET: ${target.toFixed(1)} — THEY CLOSER (${a} vs ${b})`};
+      return{me:2,them:2,o:`TARGET: ${target.toFixed(1)} — TIE`};
+    },
+    explain:"If all reason 'others pick 50 → target is 33 → others pick 33 → target is 22...' it collapses to 0. In practice people pick ~20-33. It tests depth of strategic reasoning."
+  },
+  {
+    id:'ultimatum', name:'ULTIMATUM GAME', concept:'Fairness vs Rationality', icon:'💰', timer:20,
+    type:'ultimatum',
+    desc:'10pts to split. Proposer offers a share; Responder accepts or rejects. If rejected: BOTH GET NOTHING. Pure rationality says accept any positive offer — but will you?',
+    explain:"Theory says accept any positive offer (something > nothing). But humans reject offers below ~30% — punishing unfairness at personal cost. Emotion overrides rationality."
+  },
+  {
+    id:'dollar_auction', name:'DOLLAR AUCTION', concept:'Escalation / Sunk Cost', icon:'📈', timer:10,
+    type:'auction',
+    desc:'Bidding on an 8pt prize. You can RAISE or PASS each round. BOTH pay their final bids — but only the higher bidder wins the prize. Beware the sunk cost trap!',
+    explain:"Once you've bid, passing means losing with nothing. So you raise to recoup. The other player does the same. Rational entry leads to irrational escalation — bids can exceed the prize value."
+  },
+  {
+    id:'public_goods', name:'PUBLIC GOODS', concept:'Free-Rider Problem', icon:'🏗️', timer:18,
+    type:'slider',
+    desc:'Each player has 5pts. Contribute 0–5pts to a pool. Pool is DOUBLED and split equally — regardless of who contributed. Will you free-ride?',
+    sliderLabel:'YOUR CONTRIBUTION (0–5 pts)', sliderMin:0, sliderMax:5, sliderDefault:2,
+    resolve:(a,b)=>{
+      const pool=(a+b)*2, each=pool/2;
+      const me=(5-a)+each, them=(5-b)+each;
+      return{me:Math.round(me*10)/10, them:Math.round(them*10)/10, o:`POOL: ${a+b}×2=${pool} → ${each}pts each`, ex:`You: kept ${5-a} + ${each} pool = ${me.toFixed(1)} | They contributed ${b}`};
+    },
+    explain:"The free-riding dominant strategy gives you more — but if both free-ride the pool is empty. This models taxation, climate agreements, and open-source software contributions."
+  },
+  {
+    id:'centipede', name:'CENTIPEDE GAME', concept:'Backward Induction', icon:'🐛', timer:15,
+    type:'centipede',
+    desc:'A pot starts at 2pts. On your turn: TAKE (60%/40% split now) or PASS (pot doubles, opponent decides). Pot can grow to 256pts — but anyone can grab at any time.',
+    explain:"Backward induction: at the last node, take. Therefore the second-to-last, anticipating this, take early... This unravels to: take immediately at move 1. Yet cooperation yields 64× more."
+  },
+  {
+    id:'battle_sexes', name:'BATTLE OF SEXES', concept:'Coordination Dilemma', icon:'🎭', timer:12,
+    type:'sim_choice_asymmetric',
+    desc:'Both want to meet, but P1 prefers Opera 🎭 and P2 prefers Boxing 🥊. Meeting matters more than preference. Miss each other: 0pts. Meet at preferred venue: 3pts. Wrong venue: 2pts.',
+    choices:[{l:'OPERA',e:'🎭',s:'P1 preferred',v:'O'},{l:'BOXING',e:'🥊',s:'P2 preferred',v:'B'}],
+    resolve:(a,b,isP1)=>{
+      if(a==b){
+        const pref=isP1?'O':'B';
+        if(a==pref)return{me:3,them:2,o:`BOTH AT ${a=='O'?'OPERA':'BOXING'} — YOUR PREFERENCE!`};
+        return{me:2,them:3,o:`BOTH AT ${a=='O'?'OPERA':'BOXING'} — THEIR PREFERENCE`};
+      }
+      return{me:0,them:0,o:'MISSED EACH OTHER — 0 POINTS'};
+    },
+    explain:"Two pure Nash Equilibria (both Opera, both Boxing) plus one mixed strategy. Without prior communication, reaching either requires coordination — making meeting much harder than it should be."
+  },
+  {
+    id:'volunteers_dilemma', name:"VOLUNTEER'S DILEMMA", concept:'Collective Action', icon:'🙋', timer:12,
+    type:'sim_choice',
+    desc:'Someone must volunteer (cost: 1pt) to unlock 4pts for BOTH. Wait and hope they do it. If nobody volunteers: both lose everything.',
+    choices:[{l:'VOLUNTEER',e:'🙋',s:'Cost 1pt → both gain 4',v:'V'},{l:'WAIT',e:'😐',s:'Free-ride if they volunteer',v:'W'}],
+    resolve:(a,b)=>{
+      if(a=='V'&&b=='V')return{me:3,them:3,o:'BOTH VOLUNTEERED (redundant sacrifice)'};
+      if(a=='V'&&b=='W')return{me:3,them:4,o:'YOU VOLUNTEERED — THEY FREE-RODE'};
+      if(a=='W'&&b=='V')return{me:4,them:3,o:'THEY VOLUNTEERED — YOU FREE-RODE!'};
+      return{me:0,them:0,o:'NOBODY VOLUNTEERED — BOTH LOSE'};
+    },
+    explain:"The 'bystander effect' in game-theoretic form. In larger groups, each individual is less likely to volunteer — assuming others will. Explains emergency inaction and public good underprovision."
+  },
+  {
+    id:'signaling', name:'SIGNALING GAME', concept:'Costly Signaling', icon:'📡', timer:18,
+    type:'signaling',
+    desc:'Sender knows their type (Strong/Weak). They choose a signal. Receiver must TRUST or DISTRUST. Bluffing is costly — can you read the signal?',
+    explain:"Spence's job market signaling: education signals ability not by teaching skills, but by being too costly for low-ability types to fake. Only genuine signals can separate types in equilibrium."
+  },
+  {
+    id:'matching_pennies', name:'MATCHING PENNIES', concept:'Zero-Sum / Mixed Strategy', icon:'🪙', timer:8,
+    type:'sim_choice_zerosum',
+    desc:'Pure zero-sum: EVENER wins if both show same. ODDER wins if different. No pure strategy equilibrium — only 50/50 randomization is unexploitable!',
+    choices:[{l:'HEADS',e:'🪙',s:'',v:'H'},{l:'TAILS',e:'🔄',s:'',v:'T'}],
+    resolve:(a,b,isP1)=>{
+      const match=a==b;
+      if(isP1){
+        if(match)return{me:4,them:0,o:'MATCH! EVENER WINS'};
+        return{me:0,them:4,o:'MISMATCH — ODDER WINS'};
+      }else{
+        if(!match)return{me:4,them:0,o:'MISMATCH! ODDER WINS'};
+        return{me:0,them:4,o:'MATCH — EVENER WINS'};
+      }
+    },
+    explain:"The unique Nash Equilibrium is a 50/50 mixed strategy. Any pattern is exploitable. This models penalty kicks in football, bluffing in poker, and military feints."
+  }
+];
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+const S={
+  peer:null,conn:null,isHost:false,myId:null,
+  p1Score:0,p2Score:0,
+  round:0,gameOrder:[],
+  myChoice:null,theirChoice:null,
+  timerInterval:null,timerVal:0,
+  phase:'idle', // idle choosing resolving
+  // Ultimatum
+  ultRole:null, ultOffer:null,
+  // Auction
+  auctMyBid:0,auctTheirBid:0,auctMyPassed:false,auctTheirPassed:false,
+  // Centipede
+  centPot:2,centRound:0,centMyTurn:false,centMaxRounds:8,
+  // Signaling
+  sigRole:null,sigType:null,sigReceivedSignal:null,sigReceivedBluff:null
+};
+
+let CG=null; // current game ref
+
+// ═══════════════════════════════════════════════════════
+// PEER.JS
+// ═══════════════════════════════════════════════════════
+function makeCode(){
+  const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s='';for(let i=0;i<6;i++)s+=c[Math.floor(Math.random()*c.length)];
+  return s;
+}
+
+let peerReady=false;
+function initPeer(){
+  if(peerReady)return;
+  peerReady=true;
+  const code=makeCode();
+  S.peer=new Peer(code,{host:'peerjs.com',port:443,path:'/',secure:true,config:{iceServers:[{urls:'stun:stun.l.google.com:19302'}]}});
+  S.peer.on('open',id=>{
+    S.myId=id;
+    document.getElementById('roomIdDisplay').textContent=id;
+    setStatus('peer','✓ READY — SHARE YOUR CODE','ok');
+    document.getElementById('joinBtn').disabled=false;
+  });
+  S.peer.on('connection',conn=>{
+    if(S.conn){conn.close();return;}
+    S.conn=conn;S.isHost=true;
+    wireConn();
+    setStatus('peer','✓ OPPONENT CONNECTED!','ok');
+    setTimeout(()=>{const seed=Date.now();send({t:'start',seed});startGame(seed);},800);
+  });
+  S.peer.on('error',e=>{
+    setStatus('peer','ERROR — REFRESH PAGE','error');
+    peerReady=false;
+    setTimeout(initPeer,3000);
+  });
+}
+
+function joinRoom(){
+  const code=document.getElementById('joinInput').value.trim().toUpperCase();
+  if(code.length<3)return;
+  setStatus('join','CONNECTING...','waiting');
+  const conn=S.peer.connect(code,{reliable:true});
+  conn.on('open',()=>{S.conn=conn;S.isHost=false;wireConn();setStatus('join','✓ CONNECTED! WAITING...','ok');});
+  conn.on('error',()=>setStatus('join','FAILED — CHECK CODE','error'));
+}
+
+function wireConn(){
+  S.conn.on('data',d=>handleMsg(JSON.parse(d)));
+  S.conn.on('close',()=>{alert('Opponent disconnected!');showScreen('title');});
+}
+
+function send(msg){
+  if(S.conn&&S.conn.open)S.conn.send(JSON.stringify(msg));
+}
+
+function setStatus(id,txt,cls){
+  const el=document.getElementById(id+'Status');
+  if(el){el.textContent=txt;el.className='status-line '+(cls||'');}
+}
+
+// ═══════════════════════════════════════════════════════
+// MESSAGE HANDLER
+// ═══════════════════════════════════════════════════════
+function handleMsg(m){
+  switch(m.t){
+    case'start':startGame(m.seed);break;
+    case'rematch':if(!S.isHost)startGame(m.seed);break;
+    case'choice':S.theirChoice=m.v;checkBoth();break;
+    case'number':S.theirChoice=m.v;checkBoth();break;
+    case'slider':S.theirChoice=m.v;checkBoth();break;
+    case'ult_offer':rcvUltOffer(m.offer);break;
+    case'ult_resp':resolveUlt(m.accept,m.offer);break;
+    case'auct_bid':onAuctBid(m.bid,false);break;
+    case'auct_pass':onAuctPass(false);break;
+    case'cent_take':resolveCent('take',false);break;
+    case'cent_pass':advanceCent();break;
+    case'sig_signal':rcvSignal(m.signal,m.bluff);break;
+    case'sig_resp':resolveSig(m.trust);break;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// GAME FLOW
+// ═══════════════════════════════════════════════════════
+function seededRng(seed){
+  let s=seed%2147483647;if(s<=0)s+=2147483646;
+  return()=>{s=s*16807%2147483647;return(s-1)/2147483646;};
+}
+function shuffle(arr,rng){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+function startGame(seed){
+  const rng=seededRng(seed);
+  S.gameOrder=shuffle(GAMES,rng);
+  S.round=0;S.p1Score=0;S.p2Score=0;
+  updateSB();
+  showScreen('game');
+  nextRound();
+}
+
+function nextRound(){
+  if(S.round>=GAMES.length){endGame();return;}
+  const g=S.gameOrder[S.round];
+  S.myChoice=null;S.theirChoice=null;S.phase='idle';
+  clearInterval(S.timerInterval);
+
+  const rt=document.getElementById('roundTransition');
+  document.getElementById('rtNum').textContent=S.round+1;
+  document.getElementById('rtName').textContent=g.name;
+  rt.classList.add('show');
+
+  setTimeout(()=>{
+    rt.classList.remove('show');
+    S.round++;
+    document.getElementById('roundNum').textContent=`${S.round}/12`;
+    CG=g;
+    loadGame(g);
+  },2400);
+}
+
+function loadGame(g){
+  document.getElementById('gameTitle').textContent=g.name;
+  document.getElementById('conceptTag').textContent=g.concept.toUpperCase();
+  S.phase='choosing';
+  const body=document.getElementById('gameBody');
+
+  if(g.type=='sim_choice'||g.type=='sim_choice_asymmetric'||g.type=='sim_choice_zerosum')renderSimChoice(g,body);
+  else if(g.type=='number')renderNumber(g,body);
+  else if(g.type=='slider')renderSlider(g,body);
+  else if(g.type=='ultimatum')renderUltimatum(g,body);
+  else if(g.type=='auction')renderAuction(g,body);
+  else if(g.type=='centipede')renderCentipede(g,body);
+  else if(g.type=='signaling')renderSignaling(g,body);
+
+  startTimer(g.timer);
+}
+
+function startTimer(secs){
+  clearInterval(S.timerInterval);
+  S.timerVal=secs;
+  const el=document.getElementById('gameTimer');
+  el.textContent=S.timerVal;el.className='game-timer';
+  S.timerInterval=setInterval(()=>{
+    S.timerVal--;
+    el.textContent=S.timerVal;
+    if(S.timerVal<=5)el.className='game-timer urgent';
+    if(S.timerVal<=0){clearInterval(S.timerInterval);if(S.phase=='choosing')autoTimeout();}
+  },1000);
+}
+
+function stopTimer(){
+  clearInterval(S.timerInterval);
+  document.getElementById('gameTimer').textContent='✓';
+  document.getElementById('gameTimer').className='game-timer';
+}
+
+function autoTimeout(){
+  const g=CG;if(!g)return;
+  if(g.type=='sim_choice'||g.type=='sim_choice_asymmetric'||g.type=='sim_choice_zerosum'){
+    if(!S.myChoice)doChoice(g.choices[0].v);
+  }else if(g.type=='number'){
+    if(S.myChoice===null)doNumber(g.defVal);
+  }else if(g.type=='slider'){
+    if(S.myChoice===null)doSlider(g.sliderDefault);
+  }else if(g.type=='ultimatum'){
+    if(S.ultRole=='proposer'&&S.myChoice===null)doUltOffer(5);
+    else if(S.ultRole=='responder'&&S.myChoice===null)doUltResp(true);
+  }else if(g.type=='centipede'){
+    if(S.centMyTurn&&S.myChoice===null)doCentPass();
+  }else if(g.type=='signaling'){
+    if(S.sigRole=='sender'&&S.myChoice===null)doSigSend('weak',false);
+    else if(S.sigRole=='receiver'&&S.myChoice===null)doSigResp(false);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDERERS
+// ═══════════════════════════════════════════════════════
+
+// SIM CHOICE
+function renderSimChoice(g,body){
+  let role='';
+  if(g.id=='matching_pennies'){
+    role=`<div class="role-badge ${S.isHost?'p1':'p2'}">${S.isHost?'YOU ARE EVENER (match wins)':'YOU ARE ODDER (mismatch wins)'}</div>`;
+  }
+  let mat='';
+  if(g.matrix){
+    const [c0,c1]=g.choices;
+    mat=`<table class="matrix-table">
+      <tr><th></th><th>${c0.l}</th><th>${c1.l}</th></tr>
+      <tr><td style="color:var(--muted);font-size:9px">YOU ${c0.l}</td><td class="h">${g.matrix[0][0]}</td><td>${g.matrix[0][1]}</td></tr>
+      <tr><td style="color:var(--muted);font-size:9px">YOU ${c1.l}</td><td>${g.matrix[1][0]}</td><td class="h">${g.matrix[1][1]}</td></tr>
+    </table>`;
+  }
+  body.innerHTML=`<div class="game-desc">${g.desc}</div>${role}
+    <div class="choices grid2">${g.choices.map(c=>`<button class="choice-btn" id="cb_${c.v}" onclick="doChoice('${c.v}')"><span class="ce">${c.e}</span><span class="cl">${c.l}</span><span class="cs">${c.s}</span></button>`).join('')}</div>
+    ${mat}<div class="waiting-msg" id="wm" style="display:none">⌛ WAITING FOR OPPONENT...</div>`;
+}
+
+function doChoice(v){
+  if(S.myChoice)return;
+  S.myChoice=v;
+  document.querySelectorAll('.choice-btn').forEach(b=>{b.disabled=true;});
+  const btn=document.getElementById('cb_'+v);if(btn)btn.classList.add('selected');
+  stopTimer();send({t:'choice',v});
+  const wm=document.getElementById('wm');if(wm)wm.style.display='block';
+  checkBoth();
+}
+
+// NUMBER
+function renderNumber(g,body){
+  body.innerHTML=`<div class="game-desc">${g.desc}</div>
+    <input type="number" id="numInput" min="${g.min}" max="${g.max}" value="${g.defVal}"/>
+    <div style="margin-top:12px"><button class="btn cyan" id="numBtn" onclick="doNumber(parseInt(document.getElementById('numInput').value))">→ LOCK IN NUMBER</button></div>
+    <div class="waiting-msg" id="wm" style="display:none">⌛ WAITING...</div>`;
+  document.getElementById('numInput').addEventListener('input',e=>{
+    let v=parseInt(e.target.value)||g.defVal;
+    if(v<g.min)v=g.min;if(v>g.max)v=g.max;e.target.value=v;
+  });
+}
+
+function doNumber(v){
+  if(S.myChoice!==null)return;
+  const g=CG;v=Math.max(g.min,Math.min(g.max,v||g.defVal));
+  S.myChoice=v;
+  const ni=document.getElementById('numInput');if(ni)ni.disabled=true;
+  const nb=document.getElementById('numBtn');if(nb)nb.disabled=true;
+  stopTimer();send({t:'number',v});
+  const wm=document.getElementById('wm');if(wm)wm.style.display='block';
+  checkBoth();
+}
+
+// SLIDER
+function renderSlider(g,body){
+  body.innerHTML=`<div class="game-desc">${g.desc}</div>
+    <div class="slider-wrap">
+      <label>${g.sliderLabel}</label>
+      <input type="range" id="slInput" min="${g.sliderMin}" max="${g.sliderMax}" value="${g.sliderDefault}" oninput="document.getElementById('slVal').textContent=this.value"/>
+      <div class="slider-val" id="slVal">${g.sliderDefault}</div>
+    </div>
+    <button class="btn yellow" id="slBtn" onclick="doSlider(parseInt(document.getElementById('slInput').value))">→ CONTRIBUTE</button>
+    <div class="waiting-msg" id="wm" style="display:none">⌛ WAITING...</div>`;
+}
+
+function doSlider(v){
+  if(S.myChoice!==null)return;
+  S.myChoice=v;
+  const si=document.getElementById('slInput');if(si)si.disabled=true;
+  const sb=document.getElementById('slBtn');if(sb)sb.disabled=true;
+  stopTimer();send({t:'slider',v});
+  const wm=document.getElementById('wm');if(wm)wm.style.display='block';
+  checkBoth();
+}
+
+// ULTIMATUM
+function renderUltimatum(g,body){
+  S.ultRole=S.isHost?'proposer':'responder';
+  if(S.ultRole=='proposer'){
+    body.innerHTML=`<div class="game-desc">${g.desc}</div>
+      <div class="role-badge p1">💬 PROPOSER</div>
+      <div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">HOW MUCH TO GIVE OPPONENT OUT OF 10?</div>
+      <div class="slider-wrap">
+        <input type="range" id="ultSlider" min="0" max="10" value="5" oninput="document.getElementById('ultKeep').textContent=10-this.value;document.getElementById('ultGive').textContent=this.value"/>
+        <div style="display:flex;justify-content:space-between;margin-top:8px">
+          <div style="text-align:center"><div class="score-name">YOU KEEP</div><div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--p1)" id="ultKeep">5</div></div>
+          <div style="text-align:center"><div class="score-name">THEY GET</div><div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--p2)" id="ultGive">5</div></div>
+        </div>
+      </div>
+      <button class="btn primary" id="ultBtn" onclick="doUltOffer(parseInt(document.getElementById('ultSlider').value))">→ SEND OFFER</button>`;
+  }else{
+    body.innerHTML=`<div class="game-desc">${g.desc}</div>
+      <div class="role-badge p2">👂 RESPONDER</div>
+      <div class="waiting-msg" id="wm">⌛ WAITING FOR PROPOSER'S OFFER...</div>
+      <div id="offerArea" style="display:none">
+        <div class="auction-display"><div class="auction-item" id="offerAmt">?</div><div class="auction-value">OFFERED TO YOU (out of 10)</div></div>
+        <div class="choices grid2">
+          <button class="choice-btn" onclick="doUltResp(true)"><span class="ce">✅</span><span class="cl">ACCEPT</span><span class="cs">Take the money</span></button>
+          <button class="choice-btn" onclick="doUltResp(false)"><span class="ce">❌</span><span class="cl">REJECT</span><span class="cs">Both get nothing</span></button>
+        </div>
+      </div>`;
+  }
+}
+
+function doUltOffer(offer){
+  if(S.myChoice!==null)return;
+  S.myChoice=offer;S.ultOffer=offer;
+  const btn=document.getElementById('ultBtn');if(btn)btn.disabled=true;
+  stopTimer();send({t:'ult_offer',offer});
+  const body=document.getElementById('gameBody');
+  body.innerHTML+='<div class="waiting-msg">⌛ OFFER SENT — WAITING...</div>';
+}
+
+function rcvUltOffer(offer){
+  S.ultOffer=offer;
+  const wm=document.getElementById('wm');if(wm)wm.style.display='none';
+  const oa=document.getElementById('offerAmt');if(oa)oa.textContent=offer+' PTS';
+  const area=document.getElementById('offerArea');if(area)area.style.display='block';
+  startTimer(15);
+}
+
+function doUltResp(accept){
+  if(S.myChoice!==null)return;
+  S.myChoice=accept?'Y':'N';
+  stopTimer();send({t:'ult_resp',accept,offer:S.ultOffer});
+  resolveUlt(accept,S.ultOffer);
+}
+
+function resolveUlt(accept,offer){
+  clearInterval(S.timerInterval);
+  const isP=S.ultRole=='proposer';
+  let mp,tp,o;
+  if(accept){mp=isP?10-offer:offer;tp=isP?offer:10-offer;o=`OFFER OF ${offer} ACCEPTED`;}
+  else{mp=0;tp=0;o=`OFFER OF ${offer} REJECTED — BOTH GET 0`;}
+  awardAndShow(mp,tp,o,'',CG.explain);
+}
+
+// AUCTION
+function renderAuction(g,body){
+  S.auctMyBid=0;S.auctTheirBid=0;S.auctMyPassed=false;S.auctTheirPassed=false;
+  drawAuction(body);
+}
+
+function drawAuction(body){
+  if(!body)body=document.getElementById('gameBody');
+  const g=CG;
+  body.innerHTML=`<div class="game-desc">${g.desc}</div>
+    <div class="auction-display">
+      <div class="auction-item">🏆</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:40px;color:var(--accent3)">8 PTS</div>
+      <div class="auction-value">PRIZE VALUE</div>
+    </div>
+    <div style="display:flex;gap:16px;justify-content:space-between;margin:10px 0">
+      <div style="text-align:center"><div class="score-name">YOUR BID</div><div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--p1)" id="myBidDisplay">${S.auctMyBid}</div></div>
+      <div style="text-align:center"><div class="score-name">THEIR BID</div><div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--p2)" id="theirBidDisplay">${S.auctTheirBid}</div></div>
+    </div>
+    <div style="font-size:9px;color:var(--accent);letter-spacing:2px;text-align:center;margin-bottom:10px">⚠ BOTH BIDDERS PAY THEIR BID — ONLY WINNER GETS PRIZE</div>
+    ${!S.auctMyPassed?`<div class="choices grid2">
+      <button class="choice-btn" id="raiseBtnAuct" onclick="doAuctBid(${S.auctMyBid+1})"><span class="ce">📈</span><span class="cl">RAISE BID</span><span class="cs">Bid ${S.auctMyBid+1}</span></button>
+      <button class="choice-btn" onclick="doAuctPass()"><span class="ce">🏳️</span><span class="cl">PASS</span><span class="cs">Forfeit your bid</span></button>
+    </div>`:'<div class="waiting-msg">🏳️ YOU PASSED — WAITING FOR OPPONENT...</div>'}
+    <div class="waiting-msg" id="auctWait" style="display:none">⌛ WAITING...</div>`;
+}
+
+function doAuctBid(bid){
+  if(S.auctMyPassed)return;
+  S.auctMyBid=bid;
+  send({t:'auct_bid',bid});
+  checkAuction();
+}
+
+function doAuctPass(){
+  if(S.auctMyPassed)return;
+  S.auctMyPassed=true;
+  send({t:'auct_pass'});
+  checkAuction();
+}
+
+function onAuctBid(bid,mine){
+  if(mine)S.auctMyBid=bid;else S.auctTheirBid=bid;
+  checkAuction();
+}
+
+function onAuctPass(mine){
+  if(mine)S.auctMyPassed=true;else S.auctTheirPassed=true;
+  checkAuction();
+}
+
+function checkAuction(){
+  drawAuction();
+  if(S.auctMyPassed||S.auctTheirPassed){
+    // one or both passed — resolve
+    clearInterval(S.timerInterval);
+    setTimeout(resolveAuction,500);
+  }
+}
+
+function resolveAuction(){
+  const mb=S.auctMyBid,tb=S.auctTheirBid,prize=8;
+  let mp,tp,o;
+  if(mb>tb){mp=Math.max(0,prize-mb);tp=Math.max(0,-tb+2);o=`YOU WIN AUCTION (bid ${mb}, they bid ${tb})`;}
+  else if(tb>mb){mp=Math.max(0,-mb+2);tp=Math.max(0,prize-tb);o=`OPPONENT WINS (bid ${tb}, you bid ${mb})`;}
+  else{mp=Math.max(0,-mb+2);tp=Math.max(0,-tb+2);o=`TIE BID (${mb} each) — NO WINNER`;}
+  awardAndShow(mp,tp,o,'',CG.explain);
+}
+
+// CENTIPEDE
+function renderCentipede(g,body){
+  S.centPot=2;S.centRound=0;S.centMyTurn=S.isHost;S.centMaxRounds=8;
+  drawCentipede(body);
+}
+
+function drawCentipede(body){
+  if(!body)body=document.getElementById('gameBody');
+  const pot=S.centPot,myS=Math.ceil(pot*.6),thS=Math.floor(pot*.4);
+  body.innerHTML=`<div class="game-desc">Pot: ${pot}pts. TAKE (you get ${myS}, they get ${thS}) or PASS (pot doubles to ${pot*2}, their turn). Up to round ${S.centMaxRounds}.</div>
+    <div class="auction-display">
+      <div class="auction-item">💰</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:44px;color:var(--accent3)">${pot} PTS</div>
+      <div class="auction-value">CURRENT POT · ROUND ${S.centRound+1}/${S.centMaxRounds}</div>
+    </div>
+    ${S.centMyTurn?`
+    <div style="font-size:10px;color:var(--accent2);letter-spacing:3px;text-align:center;margin:8px 0">YOUR TURN</div>
+    <div class="choices grid2">
+      <button class="choice-btn" onclick="doCentTake()"><span class="ce">💰</span><span class="cl">TAKE</span><span class="cs">You:${myS} / Them:${thS}</span></button>
+      <button class="choice-btn" onclick="doCentPass()" ${S.centRound>=S.centMaxRounds-1?'disabled':''}><span class="ce">➡️</span><span class="cl">PASS</span><span class="cs">Pot → ${pot*2}pts</span></button>
+    </div>
+    `:'<div class="waiting-msg">⌛ OPPONENT\'S TURN — WILL THEY TAKE OR PASS?</div>'}`;
+}
+
+function doCentTake(){
+  if(!S.centMyTurn||S.myChoice)return;
+  S.myChoice='take';
+  send({t:'cent_take'});
+  resolveCent('take',true);
+}
+
+function doCentPass(){
+  if(S.myChoice)return;
+  S.myChoice='pass';
+  send({t:'cent_pass'});
+  advanceCent();
+}
+
+function advanceCent(){
+  S.centPot*=2;S.centRound++;S.centMyTurn=!S.centMyTurn;
+  S.myChoice=null;
+  if(S.centRound>=S.centMaxRounds){resolveCent('end',true);}
+  else{drawCentipede();startTimer(CG.timer);}
+}
+
+function resolveCent(action,isMine){
+  clearInterval(S.timerInterval);
+  const pot=S.centPot;
+  let mp,tp,o;
+  if(action=='take'){
+    const myShare=Math.ceil(pot*.6),thShare=Math.floor(pot*.4);
+    if(isMine){mp=myShare;tp=thShare;o=`YOU TOOK ${pot}PT POT (${myShare}/${thShare})`;}
+    else{mp=thShare;tp=myShare;o=`OPPONENT TOOK ${pot}PT POT (${myShare}/${thShare})`;}
+  }else{
+    mp=Math.floor(pot/2);tp=Math.floor(pot/2);o=`MAX ROUNDS — SPLIT ${pot}PTS EVENLY`;
+  }
+  awardAndShow(mp,tp,o,'',CG.explain);
+}
+
+// SIGNALING
+function renderSignaling(g,body){
+  S.sigRole=S.isHost?'sender':'receiver';
+  if(S.sigRole=='sender'){
+    const isStrong=Math.random()>.38;
+    S.sigType=isStrong?'strong':'weak';
+    body.innerHTML=`<div class="game-desc">${g.desc}</div>
+      <div class="role-badge p1">📡 SENDER</div>
+      <div class="secret-box ${isStrong?'strong':'weak'}">
+        <div style="font-size:9px;letter-spacing:3px;color:var(--muted);margin-bottom:4px">YOUR SECRET TYPE</div>
+        <div class="secret-type ${isStrong?'strong':'weak'}">${isStrong?'💪 STRONG':'😟 WEAK'}</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:4px">${isStrong?'Sending STRONG: free (true signal)':'Sending STRONG: costs 1pt (bluff)'}</div>
+      </div>
+      <div class="choices grid2">
+        <button class="choice-btn" onclick="doSigSend('strong',${isStrong?'false':'true'})"><span class="ce">💪</span><span class="cl">SIGNAL STRONG</span><span class="cs">${isStrong?'True — free':'Bluff — costs 1pt'}</span></button>
+        <button class="choice-btn" onclick="doSigSend('weak',false)"><span class="ce">😟</span><span class="cl">SIGNAL WEAK</span><span class="cs">Honest signal</span></button>
+      </div>`;
+  }else{
+    body.innerHTML=`<div class="game-desc">${g.desc}</div>
+      <div class="role-badge p2">👁️ RECEIVER</div>
+      <div class="waiting-msg" id="wm">⌛ WAITING FOR SENDER'S SIGNAL...</div>
+      <div id="sigArea" style="display:none">
+        <div class="auction-display"><div class="auction-item" id="sigDisplay">?</div><div class="auction-value">SENDER'S SIGNAL</div></div>
+        <div class="choices grid2">
+          <button class="choice-btn" onclick="doSigResp(true)"><span class="ce">✅</span><span class="cl">TRUST</span><span class="cs">Believe the signal</span></button>
+          <button class="choice-btn" onclick="doSigResp(false)"><span class="ce">🔍</span><span class="cl">DISTRUST</span><span class="cs">Call the bluff</span></button>
+        </div>
+      </div>`;
+  }
+}
+
+function doSigSend(signal,isBluff){
+  if(S.myChoice)return;
+  S.myChoice=signal;
+  document.querySelectorAll('.choice-btn').forEach(b=>b.disabled=true);
+  stopTimer();send({t:'sig_signal',signal,bluff:isBluff});
+  document.getElementById('gameBody').innerHTML+='<div class="waiting-msg">⌛ SIGNAL SENT — WAITING FOR RECEIVER...</div>';
+}
+
+function rcvSignal(signal,isBluff){
+  S.sigReceivedSignal=signal;S.sigReceivedBluff=isBluff;
+  const wm=document.getElementById('wm');if(wm)wm.style.display='none';
+  const sd=document.getElementById('sigDisplay');if(sd)sd.textContent=signal=='strong'?'💪 STRONG':'😟 WEAK';
+  const sa=document.getElementById('sigArea');if(sa)sa.style.display='block';
+  startTimer(12);
+}
+
+function doSigResp(trust){
+  if(S.myChoice!==null)return;
+  S.myChoice=trust;
+  stopTimer();send({t:'sig_resp',trust});
+  resolveSig(trust);
+}
+
+function resolveSig(trust){
+  clearInterval(S.timerInterval);
+  const isSender=S.sigRole=='sender';
+  const isBluff=isSender?((S.myChoice=='strong')&&S.sigType=='weak'):S.sigReceivedBluff;
+  const trusted=isSender?trust:(S.myChoice===true);
+  let mp,tp,o;
+  if(isSender){
+    if(trusted&&!isBluff){mp=4;tp=2;o='HONEST SIGNAL TRUSTED';}
+    else if(trusted&&isBluff){mp=3;tp=0;o='BLUFF TRUSTED! SENDER WINS';}
+    else if(!trusted&&!isBluff){mp=1;tp=3;o='HONEST SIGNAL DISTRUSTED';}
+    else{mp=0;tp=4;o='BLUFF CAUGHT! RECEIVER WINS';}
+  }else{
+    if(trusted&&!isBluff){mp=2;tp=4;o='HONEST SIGNAL TRUSTED';}
+    else if(trusted&&isBluff){mp=0;tp=3;o='BLUFF TRUSTED — SENDER WINS';}
+    else if(!trusted&&!isBluff){mp=3;tp=1;o='HONEST SIGNAL DISTRUSTED';}
+    else{mp=4;tp=0;o='BLUFF CAUGHT — YOU WIN!';}
+  }
+  awardAndShow(mp,tp,o,'',CG.explain);
+}
+
+// ═══════════════════════════════════════════════════════
+// BOTH CHOSE CHECK
+// ═══════════════════════════════════════════════════════
+function checkBoth(){
+  if(S.myChoice===null||S.myChoice===undefined)return;
+  if(S.theirChoice===null||S.theirChoice===undefined)return;
+  const g=CG;
+  clearInterval(S.timerInterval);
+  if(g.type=='sim_choice'){
+    const r=g.resolve(S.myChoice,S.theirChoice);
+    awardAndShow(r.me,r.them,r.o,'',g.explain);
+  }else if(g.type=='sim_choice_asymmetric'){
+    const r=g.resolve(S.myChoice,S.theirChoice,S.isHost);
+    awardAndShow(r.me,r.them,r.o,'',g.explain);
+  }else if(g.type=='sim_choice_zerosum'){
+    const r=g.resolve(S.myChoice,S.theirChoice,S.isHost);
+    awardAndShow(r.me,r.them,r.o,'',g.explain);
+  }else if(g.type=='number'){
+    const r=g.resolve(S.myChoice,S.theirChoice);
+    awardAndShow(r.me,r.them,r.o,r.ex||'',g.explain);
+  }else if(g.type=='slider'){
+    const r=g.resolve(S.myChoice,S.theirChoice);
+    awardAndShow(r.me,r.them,r.o,r.ex||'',g.explain);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// SCORING
+// ═══════════════════════════════════════════════════════
+function awardAndShow(myPts,theirPts,outcome,extra,explain){
+  S.phase='resolving';
+  // Points always: S.isHost is P1
+  if(S.isHost){S.p1Score+=myPts;S.p2Score+=theirPts;}
+  else{S.p2Score+=myPts;S.p1Score+=theirPts;}
+  // Clamp negatives
+  S.p1Score=Math.max(0,S.p1Score);
+  S.p2Score=Math.max(0,S.p2Score);
+  updateSB();
+
+  const isWin=myPts>theirPts,isDraw=myPts===theirPts;
+  document.getElementById('resultTitle').textContent=isWin?'ROUND WIN':isDraw?'DRAW':'ROUND LOSS';
+  document.getElementById('resultTitle').className='result-title '+(isWin?'win':isDraw?'draw':'lose');
+  document.getElementById('resultOutcome').textContent=outcome;
+  document.getElementById('resultExtra').textContent=extra||'';
+  document.getElementById('resultExplain').textContent=explain||'';
+  document.getElementById('resultPts').textContent=`+${myPts} pts for you  /  +${theirPts} pts for opponent`;
+  document.getElementById('resultOverlay').classList.add('show');
+
+  setTimeout(()=>{
+    document.getElementById('resultOverlay').classList.remove('show');
+    if(S.round>=GAMES.length)endGame();
+    else nextRound();
+  },4200);
+}
+
+function updateSB(){
+  document.getElementById('p1score').textContent=fmt(S.p1Score);
+  document.getElementById('p2score').textContent=fmt(S.p2Score);
+  document.getElementById('p1label').textContent=S.isHost?'YOU':'OPP';
+  document.getElementById('p2label').textContent=S.isHost?'OPP':'YOU';
+}
+
+function fmt(n){return Math.round(n*10)/10;}
+
+function endGame(){
+  showScreen('gameover');
+  const myScore=S.isHost?S.p1Score:S.p2Score;
+  const oppScore=S.isHost?S.p2Score:S.p1Score;
+  document.getElementById('finalP1').textContent=fmt(S.p1Score);
+  document.getElementById('finalP2').textContent=fmt(S.p2Score);
+  const iWin=myScore>oppScore,tie=myScore===oppScore;
+  document.getElementById('finalTitle').textContent=iWin?'🏆 VICTORY':tie?'🤝 DRAW':'💀 DEFEAT';
+  document.getElementById('finalTitle').style.color=iWin?'var(--green)':tie?'var(--accent3)':'var(--accent)';
+  document.getElementById('finalMsg').textContent=iWin?'YOU WIN THE MATCH!':tie?'THE MATCH IS TIED':'OPPONENT WINS THE MATCH';
+  document.getElementById('finalMsg').style.color=iWin?'var(--green)':tie?'var(--accent3)':'var(--accent)';
+}
+
+function rematch(){
+  if(S.isHost){const seed=Date.now();send({t:'rematch',seed});startGame(seed);}
+  else{document.getElementById('finalTitle').textContent='WAITING FOR REMATCH...';document.getElementById('finalTitle').style.color='var(--accent3)';}
+}
+
+// ═══════════════════════════════════════════════════════
+// SCREEN NAV
+// ═══════════════════════════════════════════════════════
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  if(name=='lobby')initPeer();
+}
+
+function toggleGamesList(){
+  const p=document.getElementById('gamesListPanel');
+  const g=document.getElementById('gamePreviewGrid');
+  if(p.style.display=='none'){
+    p.style.display='block';
+    if(!g.innerHTML)g.innerHTML=GAMES.map(g=>`<div class="gpi"><div class="gp-icon">${g.icon}</div><div class="gp-name">${g.name}</div><div class="gp-concept">${g.concept}</div></div>`).join('');
+  }else p.style.display='none';
+}
+
+function copyRoomId(){
+  const id=document.getElementById('roomIdDisplay').textContent;
+  if(id=='LOADING...')return;
+  navigator.clipboard.writeText(id).catch(()=>{});
+  const f=document.getElementById('copyFlash');f.classList.add('show');
+  setTimeout(()=>f.classList.remove('show'),1400);
+}
+
+document.getElementById('joinInput').addEventListener('input',function(){
+  this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+});
+
+// Make global for inline onclicks
+window.doChoice=doChoice;
+window.doNumber=doNumber;
+window.doSlider=doSlider;
+window.doUltOffer=doUltOffer;
+window.doUltResp=doUltResp;
+window.doAuctBid=doAuctBid;
+window.doAuctPass=doAuctPass;
+window.doCentTake=doCentTake;
+window.doCentPass=doCentPass;
+window.doSigSend=doSigSend;
+window.doSigResp=doSigResp;
+window.State=S;
+
+console.log('🧠 MIND GAMES loaded — 12 game theory minigames ready');
+</script>
+</body>
+</html>
